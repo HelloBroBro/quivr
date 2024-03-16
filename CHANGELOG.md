@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.225 (2024-03-15)
+
+## What's Changed
+* fix(frontend): bigger icon on message row by @Zewed in https://github.com/QuivrHQ/quivr/pull/2345
+* fix(frontend): remove brains usage in user page by @Zewed in https://github.com/QuivrHQ/quivr/pull/2349
+
+
+**Full Changelog**: https://github.com/QuivrHQ/quivr/compare/v0.0.224...v0.0.225
+
+## 0.0.224 (2024-03-15)
+
+## What's Changed
+* feat(frontend): add discord link by @Zewed in https://github.com/QuivrHQ/quivr/pull/2343
+* fix(frontend): upgrade to plus  by @Zewed in https://github.com/QuivrHQ/quivr/pull/2346
+
+
+**Full Changelog**: https://github.com/QuivrHQ/quivr/compare/v0.0.223...v0.0.224
+
 ## 0.0.223 (2024-03-13)
 
 ## What's Changed
