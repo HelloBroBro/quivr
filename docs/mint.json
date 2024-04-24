@@ -57,7 +57,11 @@
           ]
         },
         "slackbot",
-        "configuring",
+        {
+          "group": "Configuring",
+          "icon": "gear",
+          "pages": ["configuring/environment-variables", "configuring/new-model", "configuring/increase-user-usage"]
+        },
         "tech-design",
         "contact-us"
       ]
@@ -71,7 +75,7 @@
       "pages": [ "brains/docs-and-urls","brains/gpt4", "brains/sql"]
     },
     {
-      "group": "Agents",
+      "group": "Assistants",
       "pages": ["agents/summary"]
     }
   ],
