@@ -1,16 +1,9 @@
 import json
 import operator
-from typing import Annotated, AsyncIterable, List, Optional, Sequence, Type, TypedDict
+from typing import Annotated, AsyncIterable, List, Optional, Sequence, TypedDict
 from uuid import UUID
 
-from langchain.callbacks.manager import (
-    AsyncCallbackManagerForToolRun,
-    CallbackManagerForToolRun,
-)
-from langchain.pydantic_v1 import BaseModel as BaseModelV1
-from langchain.pydantic_v1 import Field as FieldV1
 from langchain.tools import BaseTool
-from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_core.messages import BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import BaseTool
@@ -22,81 +15,42 @@ from modules.brain.knowledge_brain_qa import KnowledgeBrainQA
 from modules.chat.dto.chats import ChatQuestion
 from modules.chat.dto.outputs import GetChatHistoryOutput
 from modules.chat.service.chat_service import ChatService
-from openai import OpenAI
-from pydantic import BaseModel
+from modules.tools import (
+    EmailSenderTool,
+    ImageGeneratorTool,
+    URLReaderTool,
+    WebSearchTool,
+)
 
 
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
 
 
-# Define the function that determines whether to continue or not
-
 logger = get_logger(__name__)
 
 chat_service = ChatService()
 
 
-class ImageGenerationInput(BaseModelV1):
-    query: str = FieldV1(
-        ...,
-        title="description",
-        description="A detailled prompt to generate the image from. Takes into account the history of the chat.",
-    )
-
-
-class ImageGeneratorTool(BaseTool):
-    name = "image-generator"
-    description = "useful for when you need to answer questions about current events"
-    args_schema: Type[BaseModel] = ImageGenerationInput
-    return_direct = True
-
-    def _run(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
-    ) -> str:
-        client = OpenAI()
-
-        response = client.images.generate(
-            model="dall-e-3",
-            prompt=query,
-            size="1024x1024",
-            quality="standard",
-            n=1,
-        )
-        logger.info(response.data[0])
-        image_url = response.data[0].url
-        revised_prompt = response.data[0].revised_prompt
-        # Make the url a markdown image
-        return f"{revised_prompt} \n ![Generated Image]({image_url}) "
-
-    async def _arun(
-        self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
-    ) -> str:
-        """Use the tool asynchronously."""
-        client = OpenAI()
-        response = await run_manager.run_async(
-            client.images.generate,
-            model="dall-e-3",
-            prompt=query,
-            size="1024x1024",
-            quality="standard",
-            n=1,
-        )
-        image_url = response.data[0].url
-        # Make the url a markdown image
-        return f"![Generated Image]({image_url})"
-
-
 class GPT4Brain(KnowledgeBrainQA):
-    """This is the Notion brain class. it is a KnowledgeBrainQA has the data is stored locally.
-    It is going to call the Data Store internally to get the data.
-
-    Args:
-        KnowledgeBrainQA (_type_): A brain that store the knowledge internaly
+    """
+    GPT4Brain integrates with GPT-4 to provide real-time answers and supports various tools to enhance its capabilities.
+    
+    Available Tools:
+    - WebSearchTool: Performs web searches to find relevant information.
+    - ImageGeneratorTool: Generates images based on textual descriptions.
+    - URLReaderTool: Reads and summarizes content from URLs.
+    - EmailSenderTool: Sends emails with specified content.
+    
+    Use Cases:
+    - WebSearchTool can be used to find the latest news articles on a specific topic or to gather information from various websites.
+    - ImageGeneratorTool is useful for creating visual content based on textual prompts, such as generating a company logo based on a description.
+    - URLReaderTool can be used to summarize articles or web pages, making it easier to quickly understand the content without reading the entire text.
+    - EmailSenderTool enables automated email sending, such as sending a summary of a meeting's minutes to all participants.
     """
 
-    tools: List[BaseTool] = [DuckDuckGoSearchResults(), ImageGeneratorTool()]
-    tool_executor: ToolExecutor = ToolExecutor(tools)
+    tools: Optional[List[BaseTool]] = None
+    tool_executor: Optional[ToolExecutor] = None
     model_function: ChatOpenAI = None
 
     def __init__(
@@ -106,6 +60,13 @@ class GPT4Brain(KnowledgeBrainQA):
         super().__init__(
             **kwargs,
         )
+        self.tools = [
+            WebSearchTool(),
+            ImageGeneratorTool(),
+            URLReaderTool(),
+            EmailSenderTool(user_email=self.user_email),
+        ]
+        self.tool_executor = ToolExecutor(tools=self.tools)
 
     def calculate_pricing(self):
         return 3
@@ -222,7 +183,7 @@ class GPT4Brain(KnowledgeBrainQA):
         transformed_history, streamed_chat_history = (
             self.initialize_streamed_chat_history(chat_id, question)
         )
-        filtered_history = self.filter_history(transformed_history, 20, 2000)
+        filtered_history = self.filter_history(transformed_history, 40, 2000)
         response_tokens = []
         config = {"metadata": {"conversation_id": str(chat_id)}}
 
@@ -290,7 +251,7 @@ class GPT4Brain(KnowledgeBrainQA):
         transformed_history, _ = self.initialize_streamed_chat_history(
             chat_id, question
         )
-        filtered_history = self.filter_history(transformed_history, 20, 2000)
+        filtered_history = self.filter_history(transformed_history, 40, 2000)
         config = {"metadata": {"conversation_id": str(chat_id)}}
 
         prompt = ChatPromptTemplate.from_messages(
