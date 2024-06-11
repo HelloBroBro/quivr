@@ -7,6 +7,7 @@ import QuivrButton from "@/lib/components/ui/QuivrButton/QuivrButton";
 import { TextAreaInput } from "@/lib/components/ui/TextAreaInput/TextAreaInput";
 import { TextInput } from "@/lib/components/ui/TextInput/TextInput";
 import { useKnowledgeToFeedContext } from "@/lib/context/KnowledgeToFeedProvider/hooks/useKnowledgeToFeedContext";
+import { useOnboardingContext } from "@/lib/context/OnboardingProvider/hooks/useOnboardingContext";
 import { useUserData } from "@/lib/hooks/useUserData";
 
 import { BrainRecapCard } from "./BrainRecapCard/BrainRecapCard";
@@ -23,8 +24,8 @@ export const BrainRecapStep = (): JSX.Element => {
   const { createBrain } = useBrainCreationApi();
   const { updateUserIdentity } = useUserApi();
   const { userIdentityData } = useUserData();
-  const { openedConnections, setOpenedConnections } =
-    useFromConnectionsContext();
+  const { openedConnections } = useFromConnectionsContext();
+  const { setIsBrainCreated } = useOnboardingContext();
 
   const feed = async (): Promise<void> => {
     if (!userIdentityData?.onboarded) {
@@ -49,13 +50,13 @@ export const BrainRecapStep = (): JSX.Element => {
   return (
     <div className={styles.brain_recap_wrapper}>
       <div className={styles.content_wrapper}>
-        <span className={styles.title}>Brain Recap</span>
         <MessageInfoBox type="warning">
           <span className={styles.warning_message}>
             Depending on the number of knowledge, the upload can take
             <strong> few minutes</strong>.
           </span>
         </MessageInfoBox>
+        <span className={styles.title}>Brain Recap</span>
         <div className={styles.brain_info_wrapper}>
           <div className={styles.name_field}>
             <Controller
@@ -121,10 +122,12 @@ export const BrainRecapStep = (): JSX.Element => {
           iconName="add"
           onClick={async () => {
             await feed();
-            setOpenedConnections([]);
+            setIsBrainCreated(true);
           }}
           disabled={
-            knowledgeToFeed.length === 0 && !userIdentityData?.onboarded
+            knowledgeToFeed.length === 0 &&
+            !userIdentityData?.onboarded &&
+            !openedConnections.length
           }
           isLoading={creating}
           important={true}
