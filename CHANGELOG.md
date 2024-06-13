@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.263 (2024-06-12)
+
+## What's Changed
+* fix: Add error handling for syncing in tasks.py by @StanGirard in https://github.com/QuivrHQ/quivr/pull/2663
+
+
+**Full Changelog**: https://github.com/QuivrHQ/quivr/compare/v0.0.262...v0.0.263
+
+## 0.0.262 (2024-06-12)
+
+## What's Changed
+* Update README.md by @ferozemohideen in https://github.com/QuivrHQ/quivr/pull/2660
+* feat: Normalize file names in sync module by @StanGirard in https://github.com/QuivrHQ/quivr/pull/2661
+
+
+**Full Changelog**: https://github.com/QuivrHQ/quivr/compare/v0.0.261...v0.0.262
+
 ## 0.0.261 (2024-06-11)
 
 ## What's Changed
