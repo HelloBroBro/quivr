@@ -57,8 +57,20 @@ ENV PATH="/root/.cargo/bin:${PATH}" \
 
 WORKDIR /code
 
-# Copy pyproject and poetry
+
+# Copy monorepo dependencies
+# CORE
+COPY core/pyproject.toml core/README.md core/poetry.lock  /code/core/
+COPY core/quivr_core /code/core/quivr_core
+# API
+COPY api/pyproject.toml  api/poetry.lock api/README.md /code/api/
+COPY api/quivr_api /code/api/quivr_api
+
 COPY ./pyproject.toml ./poetry.lock* /code/
+
+COPY ./ci-migration.sh /code/
+
+COPY supabase /code/supabase/
 
 # Run install
 RUN poetry install --no-root  && \
@@ -68,7 +80,5 @@ RUN poetry install --no-root  && \
 
 ENV PYTHONPATH=/code
 
-# Copy the rest of the application
-COPY . .
 
 EXPOSE 5050
