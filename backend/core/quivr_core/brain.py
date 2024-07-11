@@ -1,16 +1,18 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping, Self
+from typing import Any, AsyncGenerator, Callable, Dict, Mapping, Self
 from uuid import UUID, uuid4
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.vectorstores import VectorStore
 
+from quivr_core.chat import ChatHistory
 from quivr_core.config import LLMEndpointConfig, RAGConfig
 from quivr_core.llm import LLMEndpoint
-from quivr_core.models import ParsedRAGResponse, SearchResult
+from quivr_core.models import ParsedRAGChunkResponse, ParsedRAGResponse, SearchResult
 from quivr_core.processor.default_parsers import DEFAULT_PARSERS
 from quivr_core.processor.processor_base import ProcessorBase
 from quivr_core.quivr_rag import QuivrQARAG
@@ -108,12 +110,22 @@ class Brain:
         self.storage = storage
 
         # Chat history
-        self.chat_history: list[str] = []
+        self._chats = self._init_chats()
+        self.default_chat = list(self._chats.values())[0]
 
         # RAG dependencies:
         self.llm = llm
         self.vector_db = vector_db
         self.embedder = embedder
+
+    @property
+    def chat_history(self):
+        return self.default_chat
+
+    def _init_chats(self):
+        chat_id = uuid4()
+        default_chat = ChatHistory(chat_id=chat_id, brain_id=self.id)
+        return {chat_id: default_chat}
 
     @classmethod
     async def afrom_files(
@@ -235,6 +247,9 @@ class Brain:
 
         return [SearchResult(chunk=d, score=s) for d, s in result]
 
+    def get_chat_history(self, chat_id: UUID):
+        return self._chats[chat_id]
+
     # TODO(@aminediro)
     def add_file(self) -> None:
         # add it to storage
@@ -242,7 +257,9 @@ class Brain:
         raise NotImplementedError
 
     def ask(
-        self, question: str, rag_config: RAGConfig | None = None
+        self,
+        question: str,
+        rag_config: RAGConfig | None = None,
     ) -> ParsedRAGResponse:
         llm = self.llm
 
@@ -257,9 +274,45 @@ class Brain:
             rag_config=rag_config, llm=llm, vector_store=self.vector_db
         )
 
-        # transformed_history = format_chat_history(history)
+        chat_history = self.default_chat
 
-        parsed_response = rag_pipeline.answer(question, [], [])
+        parsed_response = rag_pipeline.answer(question, chat_history, [])
+
+        chat_history.append(HumanMessage(content=question))
+        chat_history.append(AIMessage(content=parsed_response.answer))
 
         # Save answer to the chat history
         return parsed_response
+
+    async def ask_streaming(
+        self,
+        question: str,
+        rag_config: RAGConfig | None = None,
+    ) -> AsyncGenerator[ParsedRAGChunkResponse, ParsedRAGChunkResponse]:
+        llm = self.llm
+
+        # If you passed a different llm model we'll override the brain  one
+        if rag_config:
+            if rag_config.llm_config != self.llm.get_config():
+                llm = LLMEndpoint.from_config(config=rag_config.llm_config)
+        else:
+            rag_config = RAGConfig(llm_config=self.llm.get_config())
+
+        rag_pipeline = QuivrQARAG(
+            rag_config=rag_config, llm=llm, vector_store=self.vector_db
+        )
+
+        chat_history = self.default_chat
+
+        # TODO: List of files
+        full_answer = ""
+        async for response in rag_pipeline.answer_astream(question, chat_history, []):
+            # Format output to be correct servicedf;j
+            if not response.last_chunk:
+                yield response
+            full_answer += response.answer
+
+        # TODO : add sources, metdata etc  ...
+        chat_history.append(HumanMessage(content=question))
+        chat_history.append(AIMessage(content=full_answer))
+        yield response
