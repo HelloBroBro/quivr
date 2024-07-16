@@ -87,6 +87,7 @@ async def crawl_endpoint(
         process_crawl_and_notify.delay(
             crawl_website_url=crawl_website.url,
             brain_id=brain_id,
+            knowledge_id=added_knowledge.id,
             notification_id=upload_notification.id,
         )
 
