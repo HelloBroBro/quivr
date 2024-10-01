@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional, Union
 import dropbox
 import markdownify
 import msal
-import redis  # type: ignore
 import requests  # type: ignore
 from fastapi import HTTPException
 from google.auth.transport.requests import Request as GoogleRequest
@@ -25,7 +24,6 @@ from quivr_api.modules.sync.service.sync_notion import SyncNotionService
 from quivr_api.modules.sync.utils.normalize import remove_special_characters
 
 logger = get_logger(__name__)
-redis_client = redis.Redis(host="redis", port=int(os.getenv("REDIS_PORT", 6379)), db=0)
 
 
 class BaseSync(ABC):
@@ -826,7 +824,6 @@ class NotionSync(BaseSync):
                 web_view_link=page.web_view_link,
                 icon=page.icon,
             )
-            redis_client.set(str(page.id), json.dumps(page_info.model_dump_json()))
 
             pages.append(page_info)
 
