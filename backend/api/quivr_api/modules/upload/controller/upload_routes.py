@@ -30,6 +30,7 @@ from quivr_api.modules.notification.entity.notification import NotificationsStat
 from quivr_api.modules.notification.service.notification_service import (
     NotificationService,
 )
+from quivr_api.modules.sync.utils.normalize import sanitize_filename
 from quivr_api.modules.upload.service.upload_file import (
     upload_file_storage,
 )
@@ -74,23 +75,25 @@ async def upload_file(
         message = f"Brain will exceed maximum capacity. Maximum file allowed is : {convert_bytes(remaining_free_space)}"
         raise HTTPException(status_code=403, detail=message)
 
+    file_name = sanitize_filename(str(uploadFile.filename))
+
     # TODO:  Later
     upload_notification = notification_service.add_notification(
         CreateNotification(
             user_id=current_user.id,
             bulk_id=bulk_id,
             status=NotificationsStatusEnum.INFO,
-            title=f"{uploadFile.filename}",
+            title=file_name,
             category="upload",
             brain_id=str(brain_id),
         )
     )
 
     background_tasks.add_task(
-        maybe_send_telemetry, "upload_file", {"file_name": uploadFile.filename}
+        maybe_send_telemetry, "upload_file", {"file_name": file_name}
     )
 
-    filename_with_brain_id = str(brain_id) + "/" + str(uploadFile.filename)
+    filename_with_brain_id = str(brain_id) + "/" + file_name
 
     buff_reader = io.BufferedReader(uploadFile.file)  # type: ignore
     try:
@@ -110,9 +113,9 @@ async def upload_file(
 
     knowledge_to_add = CreateKnowledgeProperties(
         brain_id=brain_id,
-        file_name=uploadFile.filename,
+        file_name=file_name,
         extension=os.path.splitext(
-            uploadFile.filename  # pyright: ignore reportPrivateUsage=none
+            file_name  # pyright: ignore reportPrivateUsage=none
         )[-1].lower(),
         source=integration if integration else "local",
         source_link=integration_link,  # FIXME: Should return the s3 link @chloedia
@@ -127,7 +130,7 @@ async def upload_file(
         "process_file_task",
         kwargs={
             "file_name": filename_with_brain_id,
-            "file_original_name": uploadFile.filename,
+            "file_original_name": file_name,
             "brain_id": brain_id,
             "notification_id": upload_notification.id,
             "knowledge_id": knowledge.id,
