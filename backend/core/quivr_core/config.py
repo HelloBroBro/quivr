@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from megaparse.config import MegaparseConfig
+from quivr_core.processor.megaparse.config import MegaparseConfig
 from sqlmodel import SQLModel
 
 from quivr_core.base_config import QuivrBaseConfig
@@ -255,8 +255,6 @@ class LLMEndpointConfig(QuivrBaseConfig):
         This method sets up the initial configuration, including setting the LLM model
         config and API key.
 
-        Args:
-            **data: Keyword arguments for initializing the config.
         """
         super().__init__(**data)
         self.set_llm_model_config()
@@ -369,9 +367,6 @@ class RerankerConfig(QuivrBaseConfig):
     def __init__(self, **data):
         """
         Initialize the RerankerConfig.
-
-        Args:
-            **data: Keyword arguments for initializing the config.
         """
         super().__init__(**data)
         self.validate_model()
